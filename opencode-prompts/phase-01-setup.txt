@@ -1,0 +1,138 @@
+## Context
+
+This is a portfolio project implementing a RAG + MCP + Agent system for students
+to upload PDF lectures and ask questions about them.
+
+Current repository structure (already exists, DO NOT recreate):
+- /Frontend/  → React + TypeScript + Vite app (already scaffolded, do not touch)
+- /.env.example → exists at repo root, currently empty
+- /.gitignore → exists at repo root, currently has Python-related ignores
+- /README.md → exists at repo root, currently empty
+
+There is currently NO backend folder. We are creating it from scratch in this task.
+
+Final target architecture (for context only — do not implement beyond this phase):
+FastAPI backend + MongoDB (metadata/documents/chat history) + Qdrant (vector
+embeddings) + Groq (LLM) + Tavily (web search via MCP) + local sentence-transformers
+for embeddings. This phase only sets up the skeleton and verifies connectivity —
+no RAG, no MCP, no agent logic yet.
+
+## Objective
+
+Create a working FastAPI backend skeleton named `Backend/` (capital B, sibling to
+`Frontend/`) with:
+1. A layered project structure (api / core / models / services / mcp folders)
+2. Docker Compose setup running MongoDB and Qdrant locally
+3. A working database connection layer for both MongoDB and Qdrant
+4. A single `/health` endpoint that verifies connectivity to both databases
+5. Environment-based configuration using pydantic-settings
+
+## Before You Code
+
+1. Inspect the full repository structure first (`Frontend/`, root `.env.example`,
+   root `.gitignore`, root `README.md`).
+2. Read the existing root `.gitignore` — APPEND backend/Python-specific and
+   Docker-specific ignores if missing, do NOT create a new .gitignore file, and
+   do NOT remove existing entries.
+3. Read the existing root `.env.example` — ADD the new environment variables
+   needed for this phase to this same file, do NOT create a separate .env.example
+   inside Backend/.
+4. Confirm Docker and Docker Compose are assumed available (the user has Docker
+   installed) — no need to check, just write correct docker-compose syntax.
+
+## Requirements
+
+### Folder structure (create under `Backend/`):
+Backend/
+├── app/
+│ ├── init.py
+│ ├── main.py
+│ ├── core/
+│ │ ├── init.py
+│ │ ├── config.py # pydantic-settings, reads env vars
+│ │ └── database.py # MongoDB (motor, async) + Qdrant client setup
+│ ├── api/
+│ │ ├── init.py
+│ │ └── v1/
+│ │ ├── init.py
+│ │ ├── router.py
+│ │ └── endpoints/
+│ │ ├── init.py
+│ │ └── health.py
+│ ├── models/
+│ │ └── init.py
+│ ├── services/
+│ │ └── init.py
+│ └── mcp/
+│ └── init.py
+├── tests/
+│ └── init.py
+├── requirements.txt
+└── Dockerfile
+
+### Functional requirements:
+- `GET /api/v1/health` returns JSON with the status of: the API itself, the
+  MongoDB connection, and the Qdrant connection (e.g.
+  `{"api": "ok", "mongodb": "ok", "qdrant": "ok"}`). If a DB is unreachable,
+  that field should say `"unreachable"` or similar, NOT crash the whole app.
+- Use `motor` (async MongoDB driver) since FastAPI is async — not `pymongo` sync.
+- Use the official `qdrant-client` Python package.
+- `app/core/config.py` must use `pydantic-settings` `BaseSettings` to load:
+  `MONGODB_URI`, `MONGODB_DB_NAME`, `QDRANT_URL`, `QDRANT_PORT` (or a single
+  `QDRANT_URL` if using Docker service name). Leave placeholders in the shared
+  root `.env.example` for future variables we already know we'll need later
+  (`GROQ_API_KEY`, `TAVILY_API_KEY`) but do NOT implement anything that uses
+  them yet — just declare them as empty placeholders with comments.
+- `docker-compose.yml` at the REPO ROOT (not inside Backend/) with two services:
+  `mongodb` (official mongo image, persisted volume, exposed on default port)
+  and `qdrant` (official qdrant/qdrant image, persisted volume, exposed on
+  default ports 6333/6334). Use environment variables from `.env` where sensible
+  (e.g. Mongo root username/password) rather than hardcoding.
+- `Backend/Dockerfile` for the FastAPI app itself (python:3.12-slim base,
+  install requirements, run with uvicorn). Add the backend as a third service
+  in the root `docker-compose.yml` so `docker compose up` starts all three
+  (backend + mongodb + qdrant) together, backend depending on the other two.
+- `requirements.txt` should include: fastapi, uvicorn[standard], motor,
+  qdrant-client, pydantic-settings, python-dotenv. Pin reasonable major versions
+  but don't over-pin exact patch versions.
+
+## Architecture Constraints
+
+- Follow separation of concerns strictly: endpoints in `api/v1/endpoints/` must
+  contain ONLY request/response handling, no business logic and no direct DB
+  driver calls — route logic like "check mongo connection" should live in
+  `core/database.py` as a reusable function that the endpoint calls.
+- Do not add authentication, rate limiting, RAG logic, MCP logic, or any
+  ingestion/embedding code in this phase — this is setup-only.
+- Do not modify anything inside `Frontend/`.
+- Do not create a new root README content beyond a minimal "how to run this
+  backend locally" section — full project documentation comes in a later phase.
+
+## Error Handling
+
+- If MongoDB or Qdrant is unreachable at startup, the FastAPI app should still
+  start (don't crash the whole process) — the `/health` endpoint should simply
+  report the failure per-service so we can debug during development.
+- Config loading should raise a clear, readable error if a required env var is
+  genuinely missing (not just print a generic traceback).
+
+## Testing & Verification
+
+- After creating everything, run `docker compose up -d` (or explain the exact
+  command) to start mongodb + qdrant + backend.
+- Verify `GET http://localhost:<port>/api/v1/health` returns 200 with both
+  databases reporting "ok".
+- If anything fails to build or run, report the exact error and your diagnosis
+  — do not silently work around it by disabling checks.
+
+## Expected Output
+
+After finishing, report:
+1. The final file tree created under `Backend/` and the root `docker-compose.yml`.
+2. What env variables were added to the root `.env.example` and what each is for.
+3. What lines were added to the root `.gitignore` (if any).
+4. The exact commands needed to run the project locally (docker compose up,
+   any migration/setup steps).
+5. The actual output of testing the `/health` endpoint (or the error if it failed).
+6. Any assumptions made (e.g. chosen ports, chosen Mongo/Qdrant image versions)
+   and any unresolved issues or follow-up decisions needed from me.
