@@ -1,0 +1,6 @@
+fastapi>=0.115,<0.120
+uvicorn[standard]>=0.30,<0.35
+motor>=3.6,<4.0
+qdrant-client>=1.12,<2.0
+pydantic-settings>=2.6,<3.0
+python-dotenv>=1.0,<2.0

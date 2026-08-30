@@ -1,0 +1,49 @@
+services:
+  mongodb:
+    image: mongo:7
+    container_name: rag-mongodb
+    restart: unless-stopped
+    ports:
+      - "${MONGODB_PORT:-27017}:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-root}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-rootpassword}
+    volumes:
+      - mongodb_data:/data/db
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: rag-qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+  backend:
+    build:
+      context: ./Backend
+    container_name: rag-backend
+    restart: unless-stopped
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    environment:
+      MONGODB_URI: mongodb://${MONGO_INITDB_ROOT_USERNAME:-root}:${MONGO_INITDB_ROOT_PASSWORD:-rootpassword}@mongodb:27017
+      MONGODB_DB_NAME: ${MONGODB_DB_NAME:-rag_agent}
+      QDRANT_URL: http://qdrant:6333
+      QDRANT_PORT: 6333
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      TAVILY_API_KEY: ${TAVILY_API_KEY:-}
+    depends_on:
+      mongodb:
+        condition: service_started
+      qdrant:
+        condition: service_started
+    volumes:
+      - ./Backend/app:/app/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  mongodb_data:
+  qdrant_data:

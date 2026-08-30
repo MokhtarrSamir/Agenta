@@ -218,3 +218,16 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Backend
+*.db
+*.sqlite3
+
+# Docker
+.env.*
+!.env.example
+
+# OpenCode prompt files (local workflow, not part of project)
+.opencode-prompts/
+/opencode-prompts/
+
